@@ -1,23 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { AppState, SleepNight } from './types'
 import { loadState, saveState, getOrCreateDayEntry } from './lib/storage'
-import { lastNDays } from './lib/date'
 import GoogleConnect from './components/GoogleConnect'
 import RoutineSettings from './components/RoutineSettings'
-import SleepTable from './components/SleepTable'
+import SleepHeatmapSection from './components/SleepHeatmapSection'
+import RoutineHeatmapSection from './components/RoutineHeatmapSection'
+import DayDetailPanel from './components/DayDetailPanel'
 
-const RANGE_OPTIONS = [7, 14, 30, 60, 90]
+const MONTH_OPTIONS = [1, 2, 3, 6]
 
 export default function App() {
   const [state, setState] = useState<AppState>(() => loadState())
-  const [rangeDays, setRangeDays] = useState(30)
+  const [monthsToShow, setMonthsToShow] = useState(2)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   useEffect(() => {
     saveState(state)
   }, [state])
-
-  const dates = useMemo(() => lastNDays(rangeDays), [rangeDays])
 
   function handleSynced(nights: SleepNight[]) {
     setState((prev) => {
@@ -49,24 +49,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen px-4 py-6 md:px-8">
-      <div className="mx-auto max-w-6xl space-y-5">
+      <div className="mx-auto max-w-6xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-slate-100">Schlaf &amp; Routine Tracker</h1>
             <p className="text-sm text-slate-500">
-              Schlafdaten aus Google Fit, Tagesnotizen und deine Routine an einem Ort.
+              Schlafdaten aus Google Fit, Tagesnotizen und deine Routine als Kalenderkacheln.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400">Zeitraum</label>
+            <label className="text-xs text-slate-400">Anzeigen</label>
             <select
-              value={rangeDays}
-              onChange={(e) => setRangeDays(Number(e.target.value))}
+              value={monthsToShow}
+              onChange={(e) => setMonthsToShow(Number(e.target.value))}
               className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
             >
-              {RANGE_OPTIONS.map((n) => (
+              {MONTH_OPTIONS.map((n) => (
                 <option key={n} value={n}>
-                  {n} Tage
+                  {n} Monat{n > 1 ? 'e' : ''}
                 </option>
               ))}
             </select>
@@ -80,7 +80,7 @@ export default function App() {
         </header>
 
         <GoogleConnect
-          rangeDays={rangeDays}
+          rangeDays={Math.max(90, monthsToShow * 31)}
           lastSyncedAt={state.lastSyncedAt}
           onSynced={handleSynced}
         />
@@ -92,19 +92,32 @@ export default function App() {
           />
         )}
 
-        <SleepTable
-          dates={dates}
+        <SleepHeatmapSection months={monthsToShow} sleepNights={state.sleepNights} onDayClick={setSelectedDate} />
+
+        <RoutineHeatmapSection
+          months={monthsToShow}
           routines={state.routines}
-          dayEntries={state.days}
-          sleepNights={state.sleepNights}
-          onToggleCompletion={handleToggleCompletion}
-          onNotesChange={handleNotesChange}
+          days={state.days}
+          onDayClick={setSelectedDate}
         />
+
+        {selectedDate && (
+          <DayDetailPanel
+            date={selectedDate}
+            routines={state.routines}
+            entry={state.days[selectedDate]}
+            night={state.sleepNights[selectedDate]}
+            onClose={() => setSelectedDate(null)}
+            onToggleCompletion={handleToggleCompletion}
+            onNotesChange={handleNotesChange}
+          />
+        )}
 
         <p className="text-xs text-slate-600">
           * Der Qualitätswert ist eine lokale Schätzung aus Schlafdauer und Tiefschlaf-/REM-Anteil,
-          da Google Fit selbst keinen offiziellen Schlafqualitäts-Score liefert. Alle Notizen und
-          Routinen werden ausschließlich lokal in diesem Browser gespeichert.
+          da Google Fit selbst keinen offiziellen Schlafqualitäts-Score liefert. Klicke auf eine
+          Kachel, um Notizen zu schreiben oder Routinen für den Tag abzuhaken. Alle Daten werden
+          ausschließlich lokal in diesem Browser gespeichert.
         </p>
       </div>
     </div>

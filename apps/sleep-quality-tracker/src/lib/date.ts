@@ -12,19 +12,32 @@ export function parseDateKey(key: string): Date {
   return new Date(y, m - 1, d)
 }
 
-export function addDays(d: Date, days: number): Date {
-  const copy = new Date(d)
-  copy.setDate(copy.getDate() + days)
-  return copy
+export function daysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate()
 }
 
-/** Liste von Datums-Keys, neuestes zuerst */
-export function lastNDays(n: number, from: Date = new Date()): string[] {
-  const keys: string[] = []
-  for (let i = 0; i < n; i++) {
-    keys.push(toDateKey(addDays(from, -i)))
+/** 0 = Montag ... 6 = Sonntag (im Unterschied zu Date#getDay, das bei Sonntag beginnt) */
+export function mondayFirstIndex(d: Date): number {
+  return (d.getDay() + 6) % 7
+}
+
+const MONTH_NAMES = [
+  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
+]
+
+export function monthLabel(year: number, month: number): string {
+  return `${MONTH_NAMES[month]} ${year}`
+}
+
+/** Die letzten `count` Monate inkl. des aktuellen, neuester zuerst */
+export function recentMonths(count: number, from: Date = new Date()): { year: number; month: number }[] {
+  const result: { year: number; month: number }[] = []
+  for (let i = 0; i < count; i++) {
+    const d = new Date(from.getFullYear(), from.getMonth() - i, 1)
+    result.push({ year: d.getFullYear(), month: d.getMonth() })
   }
-  return keys
+  return result
 }
 
 export function formatDisplayDate(key: string): string {
